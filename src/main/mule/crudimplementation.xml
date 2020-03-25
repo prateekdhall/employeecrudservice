@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+		<sub-flow name="postEmployeeSubFlow" doc:id="760e99d3-d8a3-41a1-8b28-8d4533cc68cf" >
+		<ee:transform doc:name="Transform Message" doc:id="38a64f34-2589-457a-b2f5-604fd2f8adda" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="employee" ><![CDATA[%dw 2.0
+output application/java
+---
+{
+	'id': payload.id,
+    'empid': payload.empid,
+    'name': payload.name,
+    'email': payload.email,
+    'destination': payload.destination,
+    'nationality': payload.nationality,
+    'age': payload.age
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<db:select doc:name="getEmployeeByEmail" doc:id="39179e64-5757-48c2-a626-faa598c29c56" config-ref="Database_Config">
+			<db:sql>select *  from Employee where email= :email</db:sql>
+			<db:input-parameters><![CDATA[#[{'email': payload.email}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Is employee email exists?" doc:id="1b790ba7-b70d-4a53-b5b9-5b540a6796ab" >
+			<when expression="sizeOf(payload) == 0">
+				<set-variable value="#[vars.employee.id as Number +1]" doc:name="Increase id by one" doc:id="289d4e8e-071f-4895-9eb8-f5ccca917178" variableName="newid"/>
+				<db:insert doc:name="Insert employee" doc:id="fcb5c1d4-ea69-478f-8c86-f4d11e439438" config-ref="Database_Config">
+			<db:sql>INSERT INTO Employee (
+                id,
+                empid,
+                name,
+                email,
+                destination,
+                nationality,
+                age) 
+				VALUES (
+                :id,
+                :empid,
+                :name,
+                :email,
+                :destination,
+                :nationality,
+                :age)</db:sql>
+			<db:input-parameters><![CDATA[#[{
+    'id': vars.newid,
+    'empid': vars.employee.empid,
+    'name': vars.employee.name,
+    'email': vars.employee.email,
+    'destination': vars.employee.destination,
+    'nationality': vars.employee.nationality,
+    'age': vars.employee.age
+}]]]></db:input-parameters>
+		
+</db:insert>
+				<set-payload value='#[{ "message": "Employee successfully added." }]' doc:name="Success" doc:id="ca758821-ccd5-4be8-821a-188f43f772c2" />
+				<set-variable value="#[201]" doc:name="Success request" doc:id="0e6550da-0c2d-47dc-b311-4233d6b42b2c" variableName="httpStatus" />
+			</when>
+			<otherwise>
+				<set-payload value='#[{ "message": "Employee already exists." }]' doc:name="Employee already exists." doc:id="b0763b8f-f39b-45f1-939e-dc31e6e7909b" />
+				<set-variable value="#[200]" doc:name="Validation Failure" doc:id="b144ca0b-860a-4537-bb9d-4fe26838cd94" variableName="httpStatus"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="putEmployeeSubFlow" doc:id="556f2a06-0a3c-4340-a1dd-a47508a9e76f" >
+		<db:select doc:name="getEmployeeById" doc:id="a7a62938-61ad-4714-b89c-08726deac55c" config-ref="Database_Config" target="recordFromDb">
+			<db:sql >select id  from Employee where id= :id</db:sql>
+			<db:input-parameters ><![CDATA[#[{'id': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Is employee id exists?" doc:id="fdbfa2a5-dc1c-4317-b25e-f3ed2d5ce67e" >
+			<when expression="#[sizeOf(vars.recordFromDb) &gt; 0]" >
+				<db:update doc:name="Update Employee" doc:id="570742b9-f13d-4893-9d37-f91c50d90f6f" config-ref="Database_Config">
+					<db:sql>UPDATE Employee
+                        SET
+                        empid = :empid,
+                        name = :name,
+                        email = :email,
+                        destination = :destination,
+                        nationality =
+                        :nationality,
+                        age = :age    WHERE id = :id
+                    </db:sql>
+					<db:input-parameters><![CDATA[#[{
+    'id': attributes.uriParams.id,
+    'empid': payload.empid,
+    'name': payload.name,
+    'email': payload.email,
+    'destination': payload.destination,
+    'nationality': payload.nationality,
+    'age': payload.age
+}]]]></db:input-parameters>
+				</db:update>
+				<set-payload value='#[{ "message": "Employee updated successfully." }]' doc:name="Success" doc:id="04fda405-8a41-4df8-9070-77c19ad59774" />
+				<set-variable value="#[200]" doc:name="Success request" doc:id="04481c6f-d50f-46b1-85b8-27df8fabf9cb" variableName="httpStatus" />
+			</when>
+			<otherwise >
+				<set-payload value='#[{ "message": "Employee not found" }]' doc:name="Employee not found" doc:id="865ef6e3-aa0a-4a66-a840-f43ab55946a6" />
+				<set-variable value="#[404]" doc:name="Failure Request" doc:id="5a94729a-58c2-400c-b86a-121870829757" variableName="httpStatus"/>
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="deleteEmployeeSubFlow" doc:id="ef41ad2c-4311-4a24-b05e-413555f82521" >
+		<db:select doc:name="getEmployeeById" doc:id="ef539544-3879-4908-9433-133754df3008" config-ref="Database_Config" target="recordFromDb" >
+			<db:sql >select id  from Employee where id= :id</db:sql>
+			<db:input-parameters ><![CDATA[#[{'id': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Is employee id exists?" doc:id="b902d459-af4b-45fe-9071-6d3cf165cd20" >
+			<when expression="#[sizeOf(vars.recordFromDb) &gt; 0]" >
+				<db:delete doc:name="Delete Employee" doc:id="64e8b970-21fd-491e-ae94-8c15c8b58150" config-ref="Database_Config">
+					<db:sql>DELETE FROM Employee WHERE id = :id</db:sql>
+					<db:input-parameters><![CDATA[#[{
+    'id': attributes.uriParams.id
+}]]]></db:input-parameters>
+				</db:delete>
+				<set-payload value='#[{ "message": "Employee deleted successfully." }]' doc:name="Success" doc:id="7b4e0942-a9c7-42b4-8a4f-80aba64710c8" />
+				<set-variable value="#[200]" doc:name="Success request" doc:id="7cb0845e-3069-489a-8a04-7d514d516e1b" variableName="httpStatus" />
+			</when>
+			<otherwise >
+				<set-payload value='#[{ "message": "Employee not found" }]' doc:name="Employee not found" doc:id="de95210f-3371-4520-b404-7d461fdf2be8" />
+				<set-variable value="#[404]" doc:name="Failure Request" doc:id="6714be3d-9515-43a9-aa6c-fe75b8716a69" variableName="httpStatus" />
+			</otherwise>
+		</choice>
+	</sub-flow>
+	<sub-flow name="getEmployeeByIdSubFlow" doc:id="c49694bb-5c5d-4d1d-8f7b-015e6107f698" >
+		<db:select doc:name="getEmployeeById" doc:id="fb6afd24-5590-416c-b02d-74790d6e0119" config-ref="Database_Config">
+			<db:sql >select *  from Employee where id= :id</db:sql>
+			<db:input-parameters ><![CDATA[#[{'id': attributes.uriParams.id}]]]></db:input-parameters>
+		</db:select>
+		<choice doc:name="Is employee id exists?" doc:id="bc9baf39-43bd-4cb4-9e3a-ea0f6ce06f76" >
+			<when expression="#[sizeOf(payload) &gt; 0]" >
+				<ee:transform doc:name="Transform Message" doc:id="c7e13729-aae0-4dc1-8f4a-3b193fceb214" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    EmployeeId          : payload[0].empid,
+    Name                : payload[0].name,
+    Email               : payload[0].email,
+    Designation         : payload[0].destination,
+    Nationality         : payload[0].nationality
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<set-variable value="#[404]" doc:name="Set Http Status" doc:id="0350316a-7c98-4dbc-adc8-bc1e8c98896b" variableName="httpStatus" />
+				<set-payload value='#[{ "message": "Employee with the given ID not found" }]' doc:name="Employee not found" doc:id="c2058658-fe37-40ef-b687-27397d1ea432" />
+			</otherwise>
+		</choice>
+	</sub-flow>
+</mule>
