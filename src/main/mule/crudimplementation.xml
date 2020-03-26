@@ -141,16 +141,7 @@ output application/java
 			<when expression="#[sizeOf(payload) &gt; 0]" >
 				<ee:transform doc:name="Transform Message" doc:id="c7e13729-aae0-4dc1-8f4a-3b193fceb214" >
 					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-{
-    EmployeeId          : payload[0].empid,
-    Name                : payload[0].name,
-    Email               : payload[0].email,
-    Designation         : payload[0].destination,
-    Nationality         : payload[0].nationality
-}]]></ee:set-payload>
+						<ee:set-payload resource="output.dwl" />
 					</ee:message>
 				</ee:transform>
 			</when>
