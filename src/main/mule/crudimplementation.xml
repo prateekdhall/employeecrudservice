@@ -32,7 +32,10 @@ output application/java
 		</db:select>
 		<choice doc:name="Is employee email exists?" doc:id="1b790ba7-b70d-4a53-b5b9-5b540a6796ab" >
 			<when expression="sizeOf(payload) == 0">
-				<set-variable value="#[vars.employee.id as Number +1]" doc:name="Increase id by one" doc:id="289d4e8e-071f-4895-9eb8-f5ccca917178" variableName="newid"/>
+				<db:select doc:name="Select latest id+1 from employee" doc:id="10dcefb7-29db-48a3-b987-350f9f56287a" config-ref="Database_Config" targetValue="#[payload.id]" target="newkey">
+					<db:sql >select *  from Employee order by id desc</db:sql>
+				</db:select>
+				<set-variable value="#[vars.newkey[0] as Number +1]" doc:name="Increase id by one" doc:id="289d4e8e-071f-4895-9eb8-f5ccca917178" variableName="newidval"/>
 				<db:insert doc:name="Insert employee" doc:id="fcb5c1d4-ea69-478f-8c86-f4d11e439438" config-ref="Database_Config">
 			<db:sql>INSERT INTO Employee (
                 id,
@@ -51,7 +54,7 @@ output application/java
                 :nationality,
                 :age)</db:sql>
 			<db:input-parameters><![CDATA[#[{
-    'id': vars.newid,
+    'id': vars.newidval,
     'empid': vars.employee.empid,
     'name': vars.employee.name,
     'email': vars.employee.email,
