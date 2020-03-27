@@ -4,7 +4,7 @@ Assignment – 3:
 Create a Mule CRUD application as below:
 Prerequisites: 
 •	Install MySQL in your local system of use below MySQL details for the Database.
-  host: "mudb.learn.mulesoft.com"
+  host: "localhost"
   port: "3306"
   user: "mule"
   password: "mule"
